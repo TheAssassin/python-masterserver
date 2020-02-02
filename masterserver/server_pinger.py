@@ -83,9 +83,10 @@ class ServerPinger:
             else:
                 break
 
+        transport.close()
+
         if not reply_received.done():
             reply_received.cancel()
-            transport.close()
             raise TimeoutError()
 
         if reply_received.exception():
