@@ -34,11 +34,6 @@ class ServerPinger:
     _logger = get_logger("server_pinger")
 
     def __init__(self, host: Union[IPv4Address, str], port: int):
-        try:
-            self._host = host.exploded
-        except AttributeError:
-            self._host = host
-
         self._host = host
         self._port = port
 
@@ -48,11 +43,16 @@ class ServerPinger:
         reply_received = loop.create_future()
         connection_made = loop.create_future()
 
+        try:
+            host = self._host.exploded
+        except AttributeError:
+            host = self._host
+
         transport: asyncio.DatagramTransport
         protocol: PingProtocol
         transport, protocol = await loop.create_datagram_endpoint(
             lambda: PingProtocol(connection_made, reply_received),
-            remote_addr=(self._host, self._port)
+            remote_addr=(host, self._port)
         )
 
         # wait for connection
