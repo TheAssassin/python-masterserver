@@ -1,6 +1,7 @@
 import asyncio
 import itertools
 from asyncio import StreamReader, StreamWriter, Lock
+from ipaddress import IPv4Address
 from typing import List, Tuple
 
 import ZODB
@@ -157,8 +158,12 @@ class MasterServer:
 
             return server
 
-    async def register_server(self, host: str, port: int, version: int, branch: str):
+    async def register_server(self, host: str, serverip: str, port: int, branch: str):
         server = RedEclipseServer(host, port, 0, "%s:%d" % (host, port), "", "", branch)
+
+        # if a registration comes from a private IP range, we assume we can trust the IP they
+        if IPv4Address(host).is_private and serverip:
+            server.ping_addr = serverip
 
         return await self._add_or_update_server(server)
 

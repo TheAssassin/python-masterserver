@@ -63,11 +63,11 @@ class MasterServerClient:
                     raise ValueError("Invalid server command", command)
 
                 host, _ = self._writer.get_extra_info("peername")
-                port, _, version, _, _, branch = match.groups()
+                port, serverip, version, _, _, branch = match.groups()
 
                 self._logger.info("Received registration request for server %s:%d", host, int(port))
 
-                re_server = await self._master_server.register_server(host, int(port), int(version), branch)
+                re_server = await self._master_server.register_server(host, serverip, int(port), branch)
 
                 command = (await self._reader.readline()).decode().rstrip("\n")
 
