@@ -12,7 +12,7 @@ class RedEclipseServer:
     """
 
     def __init__(self, ip_addr: str, port: int, priority: int, description: str, handle: str, role: str, branch: str,
-                 remote_master_server: "RemoteMasterServer" = None, ping_addr: str = None):
+                 remote_master_server: "RemoteMasterServer" = None):
         self.ip_addr: IPv4Address = IPv4Address(ip_addr)
         self.port: int = int(port)
         self.priority: int = int(priority)
@@ -21,11 +21,6 @@ class RedEclipseServer:
         self.role: str = role
         self.branch: str = branch
         self.remote_master_server: RemoteMasterServer = remote_master_server
-
-        if not ping_addr:
-            ping_addr = ip_addr
-
-        self.ping_addr: IPv4Address = IPv4Address(ping_addr)
 
     def addserver_str(self):
         return '%s %d %d "%s" "%s" "%s" "%s"' % (
