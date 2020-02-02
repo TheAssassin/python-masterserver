@@ -74,7 +74,7 @@ class ServerPinger:
 
             try:
                 # need to shield future, otherwise it will be cancelled by wait_for
-                reply = await asyncio.wait_for(asyncio.shield(reply_received), timeout=1)
+                await asyncio.wait_for(asyncio.shield(reply_received), timeout=1)
 
             except asyncio.TimeoutError:
                 self._logger.debug("timeout")
