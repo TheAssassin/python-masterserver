@@ -9,6 +9,7 @@ VOLUME ["/data"]
 CMD ["python", "-m", "masterserver", "/data/data.zodb"]
 
 COPY masterserver/ /masterserver/masterserver/
-COPY setup.py  /masterserver/
+COPY setup.py /masterserver/
+COPY README.md /masterserver/
 
 RUN python setup.py develop
