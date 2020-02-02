@@ -159,7 +159,7 @@ class MasterServer:
             return server
 
     async def register_server(self, host: str, serverip: str, port: int, branch: str):
-        server = RedEclipseServer(host, port, 0, "%s:%d" % (host, port), "", "", branch)
+        server = RedEclipseServer(host, port, 10, "%s:%d" % (host, port), "", "", branch)
 
         # if a registration comes from a private IP range, we assume we can trust the IP they
         if IPv4Address(host).is_private and serverip:
