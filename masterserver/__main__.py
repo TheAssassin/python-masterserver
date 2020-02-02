@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import sys
 
@@ -8,7 +9,12 @@ from masterserver import MasterServer, setup_logging
 from aiohttp import web
 
 
-setup_logging(force_colors=True)
+if "DEBUG" in os.environ:
+    loglevel = logging.DEBUG
+else:
+    loglevel = logging.INFO
+
+setup_logging(force_colors=True, loglevel=loglevel)
 
 
 if len(sys.argv) > 1:
