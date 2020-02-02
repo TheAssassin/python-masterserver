@@ -128,7 +128,7 @@ class MasterServer:
             # we can update existing servers; they will be pinged automatically by a background task
             for i, old_server in enumerate(self._servers):
                 if server == old_server:
-                    self._logger.debug("updating server", server)
+                    self._logger.debug("updating server %r", server)
                     self._servers[i] = server
                     break
 
