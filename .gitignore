@@ -1,0 +1,6 @@
+.cache/
+.pytest_cache/
+__cache__/
+.idea/
+*.yml*
+!docker-compose.yml.example

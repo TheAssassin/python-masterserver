@@ -1,0 +1,15 @@
+version: "2"
+
+services:
+  masterserver:
+    build: .
+    ports:
+      - 28799:28799
+      - 28800:28800
+    environment:
+      - PROXIED_SERVERS=play.redeclipse.net
+    volumes:
+      - masterserver_data:/data
+
+volumes:
+  masterserver_data:
