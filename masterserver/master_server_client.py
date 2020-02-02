@@ -31,7 +31,7 @@ class MasterServerClient:
             ]
 
             server: RedEclipseServer
-            for server in self._master_server.servers():
+            for server in self._master_server.servers:
                 lines.append("addserver %s" % server.addserver_str())
 
             response = "\n".join(lines)
