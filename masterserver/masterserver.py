@@ -9,7 +9,7 @@ import transaction
 from persistent.list import PersistentList
 
 from . import get_logger
-from .master_server_client import MasterServerClient
+from .client_handler import ClientHandler
 from .parsed_query_reply import ParsedQueryReply
 from .red_eclipse_server import RedEclipseServer
 from .remote_master_server import RemoteMasterServer
@@ -50,7 +50,7 @@ class MasterServer:
 
     async def _handle_connection(self, reader: StreamReader, writer: StreamWriter):
         self._logger.debug("client connteced")
-        msc = MasterServerClient(self, reader, writer)
+        msc = ClientHandler(self, reader, writer)
         await msc.handle()
 
     async def _poll_proxied_servers(self):

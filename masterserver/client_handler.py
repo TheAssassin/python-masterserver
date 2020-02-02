@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from masterserver.red_eclipse_server import RedEclipseServer
 
 
-class MasterServerClient:
+class ClientHandler:
     _logger = get_logger("master-server-client")
 
     def __init__(self, master_server: "MasterServer", reader: StreamReader, writer: StreamWriter):
