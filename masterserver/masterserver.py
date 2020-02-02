@@ -163,6 +163,7 @@ class MasterServer:
 
         # if a registration comes from a private IP range, we assume we can trust the IP they
         if IPv4Address(host).is_private and serverip:
+            self._logger.warning("Remote IP %s is in private address space, using serverip %s", host, serverip)
             server.ip_addr = IPv4Address(serverip)
 
         return await self._add_or_update_server(server)
