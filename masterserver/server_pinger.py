@@ -1,4 +1,5 @@
 import asyncio
+from ipaddress import IPv4Address
 from typing import Union, Text, Tuple
 
 from . import get_logger
@@ -32,7 +33,12 @@ class PingProtocol(asyncio.DatagramProtocol):
 class ServerPinger:
     _logger = get_logger("server_pinger")
 
-    def __init__(self, host, port):
+    def __init__(self, host: Union[IPv4Address, str], port: int):
+        try:
+            self._host = host.exploded
+        except AttributeError:
+            self._host = host
+
         self._host = host
         self._port = port
 

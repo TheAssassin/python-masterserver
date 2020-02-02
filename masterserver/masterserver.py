@@ -89,7 +89,7 @@ class MasterServer:
 
     async def _ping_all_servers(self):
         async def ping_task(server: RedEclipseServer):
-            pinger = ServerPinger(server.ip_addr.exploded, server.port+1)
+            pinger = ServerPinger(server.ping_addr, server.port+1)
 
             try:
                 await pinger.ping()
@@ -138,7 +138,7 @@ class MasterServer:
 
                 # "info port" is always server port plus one
                 # FIXME: pinging should probably not lock
-                pinger = ServerPinger(server.ip_addr.exploded, server.port+1)
+                pinger = ServerPinger(server.ping_addr, server.port+1)
 
                 try:
                     data = await pinger.ping()
