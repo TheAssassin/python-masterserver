@@ -79,7 +79,7 @@ class MasterServer:
 
         loop = asyncio.get_event_loop()
         loop.create_task(self._poll_proxied_servers())
-        loop.create_task(self._ping_all_servers())
+        loop.create_task(self._ping_and_update_all_servers())
 
         self._started = True
 
@@ -88,15 +88,28 @@ class MasterServer:
         # make sure to return a copy, we don't want modifications to propagate into the database
         return list(self._servers)
 
-    async def _ping_all_servers(self):
-        async def ping_task(server: RedEclipseServer):
+    async def _ping_and_update_all_servers(self):
+        async def ping_task(server: RedEclipseServer) -> Tuple[RedEclipseServer, bool]:
+            """
+            Pings a server and updates some data, e.g., the serverdesc, from the reply.
+
+            :param server: server to ping (and update)
+            :return: (updated) server and boolean indicating whether a reply was received (True means success)
+            """
+
             pinger = ServerPinger(server.ip_addr, server.port+1)
 
             try:
-                await pinger.ping()
+                data = await pinger.ping()
             except TimeoutError:
                 self._logger.warning("Pinging server %r failed, removing", server)
-                return server
+                return server, False
+
+            # apply the description sent by the server
+            parsed = ParsedQueryReply(data)
+            server.description = parsed.description
+
+            return server, True
 
         while True:
             self._logger.info("Pinging servers")
@@ -110,14 +123,18 @@ class MasterServer:
             tasks = [ping_task(server) for server in servers]
 
             # run the pings and collect the results
-            # the resulting list will be a mix of None and servers to be removed (as the ping task returns its server
-            # in case it has to be removed)
-            servers_to_remove = list(filter(lambda i: i is not None, await asyncio.gather(*tasks)))
+            # the resulting list will contain (updated) server objects as well as whether the ping was successful
+            ping_results = list(await asyncio.gather(*tasks))
 
             # lock state and remove servers we couldn't reach
             async with self._lock:
-                for server in servers_to_remove:
+                for server, ping_successful in ping_results:
+                    # we can simply remove the entire server and re-add it in case we could ping it
                     self._servers.remove(server)
+
+                    if ping_successful:
+                        self._servers.append(server)
+
                 transaction.commit()
 
             self._logger.info("Ping done")
