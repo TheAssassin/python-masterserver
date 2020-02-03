@@ -1,7 +1,7 @@
 import asyncio
 import itertools
 from asyncio import StreamReader, StreamWriter, Lock
-from ipaddress import IPv4Address
+from ipaddress import IPv4Address, AddressValueError
 from typing import List, Tuple
 
 import ZODB
@@ -161,10 +161,17 @@ class MasterServer:
     async def register_server(self, host: str, serverip: str, port: int, branch: str):
         server = RedEclipseServer(host, port, 10, "%s:%d" % (host, port), "", "", branch)
 
+        # sanitize value
+        serverip = serverip.strip()
+
         # if a registration comes from a private IP range, we assume we can trust the IP they
-        if IPv4Address(host).is_private and serverip:
+        if IPv4Address(host).is_private and serverip and serverip != "*":
             self._logger.warning("Remote IP %s is in private address space, using serverip %s", host, serverip)
-            server.ip_addr = IPv4Address(serverip)
+
+            try:
+                server.ip_addr = IPv4Address(serverip)
+            except AddressValueError:
+                self._logger.error("Invalid IPv4 address %s, cannot fall back to serverip", serverip)
 
         return await self._add_or_update_server(server)
 
