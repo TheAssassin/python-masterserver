@@ -147,6 +147,7 @@ class MasterServer:
                     self._logger.warning("ping timeout for server %r, server will not be listed", server)
                     return
 
+                # apply the description sent by the server
                 parsed = ParsedQueryReply(data)
                 server.description = parsed.description
 
