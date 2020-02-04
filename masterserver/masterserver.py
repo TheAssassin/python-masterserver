@@ -1,8 +1,8 @@
 import asyncio
 import itertools
-from asyncio import StreamReader, StreamWriter, Lock
+from asyncio import StreamReader, StreamWriter, Lock, AbstractServer, Task
 from ipaddress import IPv4Address, AddressValueError
-from typing import List, Tuple
+from typing import List, Tuple, Union, Set
 
 import ZODB
 import transaction
@@ -43,7 +43,12 @@ class MasterServer:
         except AttributeError:
             self._servers = self._database.root.servers = PersistentList()
 
+        # keep track of state of server
+        # this way, we can run instances for testing
         self._started: bool = False
+        self._stopped: bool = False
+        self._running_server: Union[AbstractServer, None] = None
+        self._running_tasks: Set[Task] = set()
 
     def add_server_to_proxy(self, host: str, port: int = 28800):
         self._proxied_master_servers.append((host, port))
@@ -54,34 +59,77 @@ class MasterServer:
         await msc.handle()
 
     async def _poll_proxied_servers(self):
-        while True:
-            proxied_servers = [RemoteMasterServer(host, port) for host, port in self._proxied_master_servers]
+        self._logger.info("proxied servers polling task started")
 
-            self._logger.info("updating from proxied servers %r", proxied_servers)
+        # store tasks outside loop to be able to clean them up properly in case this task has been canceled
+        tasks = []
 
-            results = await asyncio.gather(*[
-                proxied_server.list_servers() for proxied_server in proxied_servers
-            ])
+        try:
+            while True:
+                proxied_servers = [RemoteMasterServer(host, port) for host, port in self._proxied_master_servers]
 
-            servers: List[RedEclipseServer] = list(itertools.chain.from_iterable(results))
+                self._logger.info("updating from proxied servers %r", proxied_servers)
 
-            await asyncio.gather(*[self._add_or_update_server(server) for server in servers])
+                tasks = [proxied_server.list_servers() for proxied_server in proxied_servers]
 
-            await asyncio.sleep(60)
+                results = await asyncio.gather(*tasks)
+
+                servers: List[RedEclipseServer] = list(itertools.chain.from_iterable(results))
+
+                await asyncio.gather(*[self._add_or_update_server(server) for server in servers])
+
+                await asyncio.sleep(60)
+
+        except asyncio.CancelledError:
+            self._logger.info("proxied servers polling task cancelled")
+
+            for task in tasks:
+                task.close()
+                await task
 
     async def start_server(self):
         if self._started:
             raise RuntimeError("Server already started")
 
+        if self._stopped:
+            raise RuntimeError("Server already stopped")
+
         self._logger.info("Starting masterserver")
 
-        await asyncio.start_server(self._handle_connection, port=self._port)
+        # sanity checks
+        assert self._running_server is None
+
+        self._running_server = await asyncio.start_server(self._handle_connection, port=self._port)
 
         loop = asyncio.get_event_loop()
-        loop.create_task(self._poll_proxied_servers())
-        loop.create_task(self._ping_and_update_all_servers())
+        self._running_tasks.add(loop.create_task(self._poll_proxied_servers()))
+        self._running_tasks.add(loop.create_task(self._ping_and_update_all_servers()))
 
         self._started = True
+        self._stopped = False
+
+    async def stop_server(self):
+        if not self._started:
+            raise RuntimeError("Server has not been started")
+
+        if self._stopped:
+            raise RuntimeError("Server already stopped")
+
+        self._logger.info("Stopping masterserver")
+
+        # sanity check
+        assert self._running_server is not None
+
+        # cancel running tasks
+        for t in self._running_tasks:
+            t.cancel()
+
+        # stop server
+        self._running_server.close()
+        await self._running_server.wait_closed()
+
+        self._started = False
+        self._stopped = True
 
     @property
     def servers(self) -> List[RedEclipseServer]:
@@ -111,35 +159,48 @@ class MasterServer:
 
             return server, True
 
-        while True:
-            self._logger.info("Pinging servers")
+        self._logger.info("ping and update task started")
 
-            # fetch current list of servers; no need to block any additions of servers, they'll be handled later
-            # anyway
-            async with self._lock:
-                servers = self.servers
+        # store tasks outside loop to be able to clean them up properly in case this task has been canceled
+        tasks = []
 
-            # create a ping task for each
-            tasks = [ping_task(server) for server in servers]
+        try:
+            while True:
+                self._logger.info("Pinging servers")
 
-            # run the pings and collect the results
-            # the resulting list will contain (updated) server objects as well as whether the ping was successful
-            ping_results = list(await asyncio.gather(*tasks))
+                # fetch current list of servers; no need to block any additions of servers, they'll be handled later
+                # anyway
+                async with self._lock:
+                    servers = self.servers
 
-            # lock state and remove servers we couldn't reach
-            async with self._lock:
-                for server, ping_successful in ping_results:
-                    # we can simply remove the entire server and re-add it in case we could ping it
-                    self._servers.remove(server)
+                # create a ping task for each
+                tasks = [ping_task(server) for server in servers]
 
-                    if ping_successful:
-                        self._servers.append(server)
+                # run the pings and collect the results
+                # the resulting list will contain (updated) server objects as well as whether the ping was successful
+                ping_results = list(await asyncio.gather(*tasks))
 
-                transaction.commit()
+                # lock state and remove servers we couldn't reach
+                async with self._lock:
+                    for server, ping_successful in ping_results:
+                        # we can simply remove the entire server and re-add it in case we could ping it
+                        self._servers.remove(server)
 
-            self._logger.info("Ping done")
+                        if ping_successful:
+                            self._servers.append(server)
 
-            await asyncio.sleep(60)
+                    transaction.commit()
+
+                self._logger.info("Ping done")
+
+                await asyncio.sleep(60)
+
+        except asyncio.CancelledError:
+            self._logger.info("ping and update task cancelled")
+
+            for task in tasks:
+                task.close()
+                await task
 
     async def _add_or_update_server(self, server: RedEclipseServer):
         async with self._lock:
