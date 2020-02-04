@@ -4,6 +4,7 @@ __cache__/
 .idea/
 *.yml*
 !docker-compose.yml.example
+!.travis.yml
 .coverage
 .tox/
 __pycache__/
