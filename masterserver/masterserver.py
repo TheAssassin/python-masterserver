@@ -109,11 +109,12 @@ class MasterServer:
         self._stopped = False
 
     async def stop_server(self):
+        if self._stopped:
+            raise RuntimeError("Server already stopped")
+
         if not self._started:
             raise RuntimeError("Server has not been started")
 
-        if self._stopped:
-            raise RuntimeError("Server already stopped")
 
         self._logger.info("Stopping masterserver")
 
