@@ -4,3 +4,7 @@ __cache__/
 .idea/
 *.yml*
 !docker-compose.yml.example
+.coverage
+.tox/
+__pycache__/
+*.egg-info/
