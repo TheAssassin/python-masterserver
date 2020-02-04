@@ -19,7 +19,7 @@ setup(
             "coloredlogs",
         ],
         "tests": [
-            "pytest"
+            "tox",
         ],
     },
     entry_points={
