@@ -50,6 +50,10 @@ class MasterServer:
         self._running_server: Union[AbstractServer, None] = None
         self._running_tasks: Set[Task] = set()
 
+    @property
+    def port(self):
+        return self._port
+
     def add_server_to_proxy(self, host: str, port: int = 28800):
         self._proxied_master_servers.append((host, port))
 
