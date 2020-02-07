@@ -39,6 +39,9 @@ class RedEclipseServer:
     def __eq__(self, other: "RedEclipseServer"):
         return self.ip_addr == other.ip_addr and self.port == other.port
 
+    def __hash__(self):
+        return hash((self.ip_addr, self.port))
+
     def to_json_dict(self) -> dict:
         rv = {
             "ip_addr": self.ip_addr.exploded,
