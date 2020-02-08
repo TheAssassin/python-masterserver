@@ -1,3 +1,7 @@
+from ipaddress import IPv4Address
+
+import pytest
+
 from masterserver.red_eclipse_server import RedEclipseServer
 
 
@@ -47,3 +51,25 @@ def test_hash():
     srv1_from_s = list(filter(lambda x: x == srv1, s))[0]
     assert srv1_from_s.priority == srv1.priority
     assert srv1_from_s.priority != srv3.priority
+
+
+def test_attributes_writability():
+    srv = RedEclipseServer("127.0.0.1", 12345, 123, "", "", "", "")
+
+    # check that non-writable properties are not writable
+    for name in ["port", "priority", "description", "auth_handle", "role", "branch", "remote_master_server"]:
+        with pytest.raises(AttributeError):
+            setattr(srv, name, "TEST")
+
+    # check that we cannot set ip address to another local address
+    with pytest.raises(ValueError):
+        srv.ip_addr = IPv4Address("192.168.2.1")
+
+    # check that we can set ip address to a public address
+    new_addr = IPv4Address("1.2.3.4")
+    srv.ip_addr = new_addr
+    assert srv.ip_addr == new_addr
+
+    # now we cannot change the IP address any more
+    with pytest.raises(ValueError):
+        srv.ip_addr = IPv4Address("2.3.4.5")
