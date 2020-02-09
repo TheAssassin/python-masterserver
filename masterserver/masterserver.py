@@ -4,10 +4,6 @@ from asyncio import StreamReader, StreamWriter, Lock, AbstractServer, Task
 from ipaddress import IPv4Address, AddressValueError
 from typing import List, Tuple, Union, Set
 
-import ZODB
-import transaction
-from persistent.list import PersistentList
-
 from . import get_logger
 from .client_handler import ClientHandler
 from .parsed_query_reply import ParsedQueryReply
@@ -19,7 +15,7 @@ from .server_pinger import ServerPinger
 class MasterServer:
     _logger = get_logger()
 
-    def __init__(self, port: int = None, database: str = None):
+    def __init__(self, port: int = None, backup_file: str = None):
         self._proxied_master_servers: List[Tuple[str, int]] = []
 
         # # FIXME: use set, should save some annoying list comparisons
@@ -31,24 +27,21 @@ class MasterServer:
 
         self._port: int = port
 
-        if not database:
-            self._logger.warning("Using in-memory database")
-        else:
-            self._logger.warning("Using database %s", database)
-
-        self._database: ZODB.DB = ZODB.connection(database)
-
-        try:
-            self._servers = self._database.root.servers
-        except AttributeError:
-            self._servers = self._database.root.servers = PersistentList()
-
         # keep track of state of server
         # this way, we can run instances for testing
         self._started: bool = False
         self._stopped: bool = False
         self._running_server: Union[AbstractServer, None] = None
         self._running_tasks: Set[Task] = set()
+
+        self._servers: Set[RedEclipseServer] = set()
+
+        # we store a backup of server:port pairs in this file every n seconds
+        # on startup, when the proxied master servers haven't been contacted yet and "own" servers have not registered
+        # yet, we can use those servers, ping them and this way restore the state of the master server
+        # will be slightly out of date (<= n seconds) but that's not really an issue for a master server
+        self._backup_file_path: str = backup_file
+        self._backup_interval: int = 60
 
     @property
     def port(self):
@@ -69,20 +62,17 @@ class MasterServer:
         tasks = []
 
         try:
-            while True:
-                proxied_servers = [RemoteMasterServer(host, port) for host, port in self._proxied_master_servers]
+            proxied_servers = [RemoteMasterServer(host, port) for host, port in self._proxied_master_servers]
 
-                self._logger.info("updating from proxied servers %r", proxied_servers)
+            self._logger.info("updating from proxied servers %r", proxied_servers)
 
-                tasks = [proxied_server.list_servers() for proxied_server in proxied_servers]
+            tasks = [proxied_server.list_servers() for proxied_server in proxied_servers]
 
-                results = await asyncio.gather(*tasks)
+            results = await asyncio.gather(*tasks)
 
-                servers: List[RedEclipseServer] = list(itertools.chain.from_iterable(results))
+            servers: List[RedEclipseServer] = list(itertools.chain.from_iterable(results))
 
-                await asyncio.gather(*[self._add_or_update_server(server) for server in servers])
-
-                await asyncio.sleep(60)
+            await asyncio.gather(*[self._add_or_update_server(server) for server in servers])
 
         except asyncio.CancelledError:
             self._logger.info("proxied servers polling task cancelled")
@@ -103,11 +93,39 @@ class MasterServer:
         # sanity checks
         assert self._running_server is None
 
+        # start server
         self._running_server = await asyncio.start_server(self._handle_connection, port=self._port)
 
+        # restore state
+        if self._backup_file_path is None:
+            self._logger.warning("No backup file path provided, will not back up own state")
+
+        else:
+            try:
+                with open(self._backup_file_path) as f:
+                    self._logger.info("Reading backed up servers from file %s", self._backup_file_path)
+
+                    for line in f:
+                        ip_addr, port = line.split(":")
+                        await self._add_or_update_server(RedEclipseServer(ip_addr, port, 0, "", "", "", ""))
+                    else:
+                        self._logger.warning("Backup file contains no data, no state to restore")
+
+                    self._logger.info("Restore complete")
+
+            except OSError:
+                self._logger.warning("Backup file %s not found, cannot restore state", self._backup_file_path)
+
+            except:
+                self._logger.exception("Failed to read backup, cannot restore state from file %s",
+                    self._backup_file_path)
+
+        # start background tasks
         loop = asyncio.get_event_loop()
-        self._running_tasks.add(loop.create_task(self._poll_proxied_servers()))
-        self._running_tasks.add(loop.create_task(self._ping_and_update_all_servers()))
+        self._logger.info("Starting background tasks")
+        self._running_tasks.add(self._create_task(self._poll_proxied_servers, 60))
+        self._running_tasks.add(self._create_task(self._ping_and_update_all_servers, 60))
+        self._running_tasks.add(self._create_task(self._backup_state, self._backup_interval))
 
         self._started = True
         self._stopped = False
@@ -118,7 +136,6 @@ class MasterServer:
 
         if not self._started:
             raise RuntimeError("Server has not been started")
-
 
         self._logger.info("Stopping masterserver")
 
@@ -137,9 +154,34 @@ class MasterServer:
         self._stopped = True
 
     @property
-    def servers(self) -> List[RedEclipseServer]:
+    def servers(self) -> Set[RedEclipseServer]:
         # make sure to return a copy, we don't want modifications to propagate into the database
-        return list(self._servers)
+        return set(self._servers)
+
+    def _create_task(self, callback: callable, interval: int, event_loop: asyncio.AbstractEventLoop = None):
+        """
+        Creates a task that runs a given callback at a given interval. Logs exceptions instead of just crashing
+        silently.
+
+        :param callback: callback to call every interval seconds
+        :param interval: interval in which to call the task; uses sleep internally, so there's no precise timing to be
+            expected
+        :return: created task
+        """
+
+        if event_loop is None:
+            event_loop = asyncio.get_event_loop()
+
+        async def wrapper(*args, **kwargs):
+            while True:
+                try:
+                    await callback(*args, **kwargs)
+                except:
+                    self._logger.exception("Error in task %s", callback.__name__)
+
+                await asyncio.sleep(interval)
+
+        return event_loop.create_task(wrapper())
 
     async def _ping_and_update_all_servers(self):
         async def ping_task(server: RedEclipseServer) -> Tuple[RedEclipseServer, bool]:
@@ -166,39 +208,35 @@ class MasterServer:
 
         self._logger.info("ping and update task started")
 
-        # store tasks outside loop to be able to clean them up properly in case this task has been canceled
+        # store tasks to be able to clean them up properly in case this task has been canceled
         tasks = []
 
         try:
-            while True:
-                self._logger.info("Pinging servers")
+            self._logger.info("Pinging servers")
 
-                # fetch current list of servers; no need to block any additions of servers, they'll be handled later
-                # anyway
-                async with self._lock:
-                    servers = self.servers
+            # fetch current list of servers; no need to block any additions of servers, they'll be handled later
+            # anyway
+            async with self._lock:
+                servers = self.servers
 
-                # create a ping task for each
-                tasks = [ping_task(server) for server in servers]
+            # create a ping task for each
+            tasks = [ping_task(server) for server in servers]
 
-                # run the pings and collect the results
-                # the resulting list will contain (updated) server objects as well as whether the ping was successful
-                ping_results = list(await asyncio.gather(*tasks))
+            # run the pings and collect the results
+            # the resulting list will contain (updated) server objects as well as whether the ping was successful
+            ping_results = list(await asyncio.gather(*tasks))
 
-                # lock state and remove servers we couldn't reach
-                async with self._lock:
-                    for server, ping_successful in ping_results:
-                        # we can simply remove the entire server and re-add it in case we could ping it
-                        self._servers.remove(server)
+            # lock state and remove servers we couldn't reach
+            async with self._lock:
+                for server, ping_successful in ping_results:
+                    # servers is a set, therefore to replace it we have to remote the old one and then add
+                    # the new instance
+                    self._servers.remove(server)
 
-                        if ping_successful:
-                            self._servers.append(server)
+                    if ping_successful:
+                        self._servers.add(server)
 
-                    transaction.commit()
-
-                self._logger.info("Ping done")
-
-                await asyncio.sleep(60)
+            self._logger.info("Ping done")
 
         except asyncio.CancelledError:
             self._logger.info("ping and update task cancelled")
@@ -207,13 +245,22 @@ class MasterServer:
                 task.close()
                 await task
 
+    async def _backup_state(self):
+        async with self._lock:
+            self._logger.info("Backing up state to file %s", self._backup_file_path)
+
+            with open(self._backup_file_path, "w") as f:
+                for server in self._servers:
+                    f.write("%s:%d\n" % (server.ip_addr.exploded, server.port))
+
     async def _add_or_update_server(self, server: RedEclipseServer):
         async with self._lock:
             # we can update existing servers; they will be pinged automatically by a background task
             for i, old_server in enumerate(self._servers):
                 if server == old_server:
                     self._logger.debug("updating server %r", server)
-                    self._servers[i] = server
+                    self._servers.remove(server)
+                    self._servers.add(server)
                     break
 
             # in case this is a new server, we need to ping it first before adding it
@@ -222,7 +269,7 @@ class MasterServer:
 
                 # "info port" is always server port plus one
                 # FIXME: pinging should probably not lock
-                pinger = ServerPinger(server.ip_addr, server.port+1)
+                pinger = ServerPinger(server.ip_addr, server.port + 1)
 
                 try:
                     data = await pinger.ping()
@@ -236,9 +283,14 @@ class MasterServer:
 
                 self._logger.info("ping successful, registered server %r", server)
 
-                self._servers.append(server)
+                # make sure old server data is removed
+                try:
+                    self._servers.remove(server)
+                except KeyError:
+                    pass
 
-            transaction.commit()
+                # if we don't remove before and just add the new server the old one is not replaced
+                self._servers.add(server)
 
             return server
 
@@ -266,5 +318,4 @@ class MasterServer:
             except ValueError:
                 return False
 
-            transaction.commit()
             return True

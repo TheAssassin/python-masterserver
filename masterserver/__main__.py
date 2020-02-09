@@ -18,7 +18,7 @@ setup_logging(force_colors=True, loglevel=loglevel)
 
 
 if len(sys.argv) > 1:
-    ms = MasterServer(database=sys.argv[1])
+    ms = MasterServer(backup_file=sys.argv[1])
 else:
     ms = MasterServer()
 
