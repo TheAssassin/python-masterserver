@@ -47,8 +47,9 @@ class RedEclipseServer:
     
     @property
     def description(self):
-        if self._description is None:
-            return "%s:%d" % (self.ip_addr.exploded, self.port)
+        # make sure every server has a description
+        if not self._description:
+            return "%s:[%d]" % (self.ip_addr.exploded, self.port)
         
         return self._description
 
@@ -72,19 +73,19 @@ class RedEclipseServer:
     def remote_master_server(self):
         return self._remote_master_server
 
-    def addserver_str(self):
+    def addserver_line(self):
         return '%s %d %d "%s" "%s" "%s" "%s"' % (
             self.ip_addr,
-            self._port,
-            self._priority,
-            self._description,
-            self._auth_handle,
-            self._role,
-            self._branch
+            self.port,
+            self.priority,
+            self.description,
+            self.auth_handle,
+            self.role,
+            self.branch
         )
 
     def __repr__(self):
-        return "<RedEclipseServer %s>" % self.addserver_str()
+        return "<RedEclipseServer %s>" % self.addserver_line()
 
     def __eq__(self, other: "RedEclipseServer"):
         return self.ip_addr == other.ip_addr and self.port == other.port

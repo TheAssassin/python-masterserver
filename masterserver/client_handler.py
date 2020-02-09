@@ -32,7 +32,7 @@ class ClientHandler:
 
             server: RedEclipseServer
             for server in self._master_server.servers:
-                lines.append("addserver %s" % server.addserver_str())
+                lines.append("addserver %s" % server.addserver_line())
 
             response = "\n".join(lines)
             response += "\n"
