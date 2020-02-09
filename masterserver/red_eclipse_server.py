@@ -51,6 +51,10 @@ class RedEclipseServer:
             return "%s:%d" % (self.ip_addr.exploded, self.port)
         
         return self._description
+
+    @description.setter
+    def description(self, value):
+        self._description = value
     
     @property
     def auth_handle(self):
