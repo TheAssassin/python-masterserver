@@ -33,30 +33,32 @@ class RemoteMasterServer:
     async def list_servers(self):
         reader, writer = await self.connect()
 
-        servers = []
+        try:
+            servers = []
 
-        writer.write(b"update\n")
+            writer.write(b"update\n")
 
-        parser = ServerListParser(self)
+            parser = ServerListParser(self)
 
-        while True:
-            line = await reader.readline()
+            while True:
+                line = await reader.readline()
 
-            if not line:
-                break
+                if not line:
+                    break
 
-            try:
-                parsed = parser.parse_line(line)
-            except ValueError as e:
-                self._logger.exception("Failed to parse addserver line", e)
-                continue
+                try:
+                    parsed = parser.parse_line(line)
+                except ValueError as e:
+                    self._logger.exception("Failed to parse addserver line", e)
+                    continue
 
-            if not parsed:
-                continue
+                if not parsed:
+                    continue
 
-            servers.append(parsed)
+                servers.append(parsed)
 
-        writer.close()
-        await writer.wait_closed()
+                return servers
 
-        return servers
+        finally:
+            writer.close()
+            await writer.wait_closed()

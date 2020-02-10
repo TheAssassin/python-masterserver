@@ -26,8 +26,14 @@ class PingProtocol(asyncio.DatagramProtocol):
     def datagram_received(self, data: Union[bytes, Text], addr: Tuple[str, int]) -> None:
         self._reply_received.set_result(data)
 
+        # make sure socket is closed
+        self._transport.close()
+
     def error_received(self, exc: Exception) -> None:
         self._reply_received.set_exception(PingError("error received", exc))
+
+        # make sure socket is closed
+        self._transport.close()
 
 
 class ServerPinger:
@@ -55,41 +61,44 @@ class ServerPinger:
             remote_addr=(host, self._port)
         )
 
-        # wait for connection
-        await connection_made
-        self._logger.debug("connection made")
+        try:
+            # wait for connection
+            await connection_made
+            self._logger.debug("connection made")
 
-        # default amount of valid pings is 5, see master.cpp
-        for i in range(5):
-            self._logger.debug("sending request %d", i)
+            # default amount of valid pings is 5, see master.cpp
+            for i in range(5):
+                self._logger.debug("sending request %d", i)
 
-            # ENet style packet containing a single \x01, probably stolen from some server browser
-            # sending a single \x01 also seems to work, though
-            transport.sendto(b"\x81\xec\x04\x01\x00")
+                # ENet style packet containing a single \x01, probably stolen from some server browser
+                # sending a single \x01 also seems to work, though
+                transport.sendto(b"\x81\xec\x04\x01\x00")
 
-            # need to check before wait_for to avoid deadlocks
-            if reply_received.done():
-                self._logger.debug("done")
-                break
+                # need to check before wait_for to avoid deadlocks
+                if reply_received.done():
+                    self._logger.debug("done")
+                    break
 
-            try:
-                # need to shield future, otherwise it will be cancelled by wait_for
-                await asyncio.wait_for(asyncio.shield(reply_received), timeout=1)
+                try:
+                    # need to shield future, otherwise it will be cancelled by wait_for
+                    await asyncio.wait_for(asyncio.shield(reply_received), timeout=1)
 
-            except asyncio.TimeoutError:
-                self._logger.debug("timeout")
-                continue
+                except asyncio.TimeoutError:
+                    self._logger.debug("timeout")
+                    continue
 
-            else:
-                break
+                else:
+                    break
 
-        transport.close()
+            if not reply_received.done():
+                reply_received.cancel()
+                raise TimeoutError()
 
-        if not reply_received.done():
-            reply_received.cancel()
-            raise TimeoutError()
+            if reply_received.exception():
+                raise reply_received.exception()
 
-        if reply_received.exception():
-            raise reply_received.exception()
+            return reply_received.result()
 
-        return reply_received.result()
+        finally:
+            # make sure we don't leak sockets
+            transport.close()
