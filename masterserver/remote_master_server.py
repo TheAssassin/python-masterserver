@@ -57,7 +57,7 @@ class RemoteMasterServer:
 
                 servers.append(parsed)
 
-                return servers
+            return servers
 
         finally:
             writer.close()
