@@ -1,7 +1,7 @@
 #! /bin/bash
 
-if [ "$COVERALLS_ENDPOINT" == "" ]; then
-    echo "Error: \$COVERALLS_ENDPOINT not set"
+if [ "$COVERALLS_HOST" == "" ]; then
+    echo "Error: \$COVERALLS_HOST not set"
     exit 1
 fi
 
