@@ -130,7 +130,9 @@ class MasterServer:
         self._logger.info("Starting background tasks")
         self._running_tasks.add(self._create_task(self._poll_proxied_servers, 60))
         self._running_tasks.add(self._create_task(self._ping_and_update_all_servers, 60))
-        self._running_tasks.add(self._create_task(self._backup_state, self._backup_interval))
+
+        if self._backup_file_path is not None:
+            self._running_tasks.add(self._create_task(self._backup_state, self._backup_interval))
 
         self._started = True
         self._stopped = False
