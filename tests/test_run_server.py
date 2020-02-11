@@ -11,16 +11,6 @@ def enable_logs():
     setup_logging()
 
 
-def test_create_masterserver_with_file_database(tmp_path):
-    db_path = str(tmp_path / "test.zodb")
-
-    assert not os.path.isfile(db_path)
-
-    MasterServer(database=db_path)
-
-    assert os.path.isfile(db_path)
-
-
 @pytest.fixture(scope="function", autouse=True)
 def masterserver(unused_tcp_port):
     ms = MasterServer(port=unused_tcp_port)
