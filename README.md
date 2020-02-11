@@ -1,8 +1,7 @@
 # Red Eclipse Python masterserver
 
-<a href="https://travis-ci.org/TheAssassin/python-masterserver" target="_blank">
-<img src="https://api.travis-ci.org/TheAssassin/python-masterserver.svg?branch=master">
-</a>
+[![Build Status](https://api.travis-ci.org/TheAssassin/python-masterserver.svg?branch=master)](https://travis-ci.org/TheAssassin/python-masterserver)
+[![Coverage Status](https://opencov.assassinate-you.net/projects/1/badge.svg)](https://opencov.assassinate-you.net/projects/1)
 
 Basic implementation of a Red Eclipse master server in Python. Can act as a proxy for other master servers by fetching their entries and rehosting them.
 
