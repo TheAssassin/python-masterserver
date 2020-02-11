@@ -105,10 +105,15 @@ class MasterServer:
                 with open(self._backup_file_path) as f:
                     self._logger.info("Reading backed up servers from file %s", self._backup_file_path)
 
+                    # keep track of count for logging purposes (that's the only reason, I promise!)
+                    servers_count = 0
+
                     for line in f:
                         ip_addr, port = line.split(":")
                         await self._add_or_update_server(RedEclipseServer(ip_addr, port, 0, "", "", "", ""))
-                    else:
+                        servers_count += 1
+
+                    if servers_count <= 0:
                         self._logger.warning("Backup file contains no data, no state to restore")
 
                     self._logger.info("Restore complete")
