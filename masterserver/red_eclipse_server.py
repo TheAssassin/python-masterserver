@@ -36,39 +36,39 @@ class RedEclipseServer:
             raise ValueError("IP address may only be overwritten by a non-private one")
 
         self._ip_addr = new_addr
-        
+
     @property
     def port(self):
         return self._port
-    
+
     @property
     def priority(self):
         return self._priority
-    
+
     @property
     def description(self):
         # make sure every server has a description
         if not self._description:
             return "%s:[%d]" % (self.ip_addr.exploded, self.port)
-        
+
         return self._description
 
     @description.setter
     def description(self, value):
         self._description = value
-    
+
     @property
     def auth_handle(self):
         return self._auth_handle
-    
+
     @property
     def role(self):
         return self._role
-    
+
     @property
     def branch(self):
         return self._branch
-    
+
     @property
     def remote_master_server(self):
         return self._remote_master_server

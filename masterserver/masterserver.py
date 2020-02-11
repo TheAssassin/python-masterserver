@@ -121,12 +121,13 @@ class MasterServer:
             except OSError:
                 self._logger.warning("Backup file %s not found, cannot restore state", self._backup_file_path)
 
-            except:
-                self._logger.exception("Failed to read backup, cannot restore state from file %s",
-                    self._backup_file_path)
+            except:  # noqa: E722
+                self._logger.exception(
+                    "Failed to read backup, cannot restore state from file %s",
+                    self._backup_file_path
+                )
 
         # start background tasks
-        loop = asyncio.get_event_loop()
         self._logger.info("Starting background tasks")
         self._running_tasks.add(self._create_task(self._poll_proxied_servers, 60))
         self._running_tasks.add(self._create_task(self._ping_and_update_all_servers, 60))
@@ -183,7 +184,7 @@ class MasterServer:
             while True:
                 try:
                     await callback(*args, **kwargs)
-                except:
+                except:  # noqa: E722
                     self._logger.exception("Error in task %s", callback.__name__)
 
                 await asyncio.sleep(interval)

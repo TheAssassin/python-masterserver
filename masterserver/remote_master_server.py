@@ -48,7 +48,7 @@ class RemoteMasterServer:
 
                 try:
                     parsed = parser.parse_line(line)
-                except ValueError as e:
+                except ValueError:
                     self._logger.exception("Failed to parse addserver line")
                     continue
 

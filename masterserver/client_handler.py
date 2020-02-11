@@ -84,8 +84,11 @@ class ClientHandler:
                 await self._handle_server(first_command)
 
             else:
-                self._logger.error("unknown command %s from client %r, closing connection", first_command,
-                    self._client_data)
+                self._logger.error(
+                    "unknown command %s from client %r, closing connection",
+                    first_command,
+                    self._client_data
+                )
 
         finally:
             self._writer.close()
