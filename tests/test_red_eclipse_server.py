@@ -57,9 +57,11 @@ def test_attributes_writability():
     srv = RedEclipseServer("127.0.0.1", 12345, 123, "", "", "", "")
 
     # check that non-writable properties are not writable
-    for name in ["port", "priority", "description", "auth_handle", "role", "branch", "remote_master_server"]:
+    for name in ["port", "priority", "auth_handle", "role", "branch", "remote_master_server"]:
         with pytest.raises(AttributeError):
             setattr(srv, name, "TEST")
+
+    srv.description = "abcdefg"
 
     # check that we cannot set ip address to another local address
     with pytest.raises(ValueError):
