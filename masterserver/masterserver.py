@@ -213,8 +213,6 @@ class MasterServer:
 
             return server, True
 
-        self._logger.info("ping and update task started")
-
         # store tasks to be able to clean them up properly in case this task has been canceled
         tasks = []
 
