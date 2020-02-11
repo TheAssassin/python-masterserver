@@ -1,7 +1,11 @@
 language: python
 
-python:
-  - "3.7"
+matrix:
+  include:
+    - python: 3.7
+    - name: flake8
+      python: 3.7
+      script: tox -e flake8
 
 install: pip install tox-travis
 script: tox
