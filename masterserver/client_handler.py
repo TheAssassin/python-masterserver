@@ -4,6 +4,7 @@ from asyncio import StreamReader, StreamWriter
 from . import get_logger
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from masterserver import MasterServer
     from masterserver.red_eclipse_server import RedEclipseServer
@@ -34,7 +35,7 @@ class ClientHandler:
 
         self._writer.write(response.encode("cube2"))
 
-        self._logger.info("closing connection from client %r", client)
+        self._logger.info("closing connection from client %r", self._client_data)
 
     async def _handle_server(self, first_command: str):
         re_server = None
@@ -83,7 +84,8 @@ class ClientHandler:
                 await self._handle_server(first_command)
 
             else:
-                self._logger.error("unknown command %s from client %r, closing connection", first_command, client)
+                self._logger.error("unknown command %s from client %r, closing connection", first_command,
+                    self._client_data)
 
         finally:
             self._writer.close()
