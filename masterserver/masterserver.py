@@ -235,12 +235,15 @@ class MasterServer:
 
             # lock state and remove servers we couldn't reach
             async with self._lock:
+                server: RedEclipseServer
                 for server, ping_successful in ping_results:
                     # servers is a set, therefore to replace it we have to remote the old one and then add
                     # the new instance
+                    self._logger.debug("[ping] removing %r", server.remote_master_server)
                     self._servers.remove(server)
 
                     if ping_successful:
+                        self._logger.debug("[ping] adding %r", server)
                         self._servers.add(server)
 
             self._logger.info("Ping done")
