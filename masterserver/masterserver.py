@@ -223,7 +223,8 @@ class MasterServer:
             # fetch current list of servers; no need to block any additions of servers, they'll be handled later
             # anyway
             async with self._lock:
-                servers = self.servers
+                # need to copy the value
+                servers = list(self.servers)
 
             # create a ping task for each
             tasks = [ping_task(server) for server in servers]
