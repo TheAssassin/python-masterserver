@@ -9,7 +9,7 @@ from .client_handler import ClientHandler
 from .parsed_query_reply import ParsedQueryReply
 from .red_eclipse_server import RedEclipseServer
 from .remote_master_server import RemoteMasterServer
-from .server_pinger import ServerPinger
+from .server_pinger import ServerPinger, PingError
 
 
 class MasterServer:
@@ -204,7 +204,8 @@ class MasterServer:
 
             try:
                 data = await pinger.ping()
-            except TimeoutError:
+
+            except (TimeoutError, PingError):
                 self._logger.warning("Pinging server %r failed, removing", server)
                 return server, False
 
