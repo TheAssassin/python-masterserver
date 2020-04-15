@@ -206,9 +206,16 @@ class MasterServer:
             try:
                 data = await pinger.ping()
 
-            except (TimeoutError, PingError) as e:
-                self._logger.warning("Pinging server %r failed, removing", server)
+            except Exception as e:
+                if isinstance(e, TimeoutError):
+                    self._logger.warning("Ping timeout for server %r, removing", server)
+                elif isinstance(e, PingError):
+                    self._logger.warning("Pinging failed for server %r (%s), removing", server, str(e))
+                else:
+                    self._logger.critical("Ping failed with unknown error %r", e, exc_info=sys.exc_info())
+
                 self._logger.debug("Exception information for %r" % e, exc_info=sys.exc_info())
+
                 return server, False
 
             # apply the description sent by the server
