@@ -1,5 +1,6 @@
 import asyncio
 import itertools
+import sys
 from asyncio import StreamReader, StreamWriter, Lock, AbstractServer, Task
 from ipaddress import IPv4Address, AddressValueError
 from typing import List, Tuple, Union, Set
@@ -205,8 +206,9 @@ class MasterServer:
             try:
                 data = await pinger.ping()
 
-            except (TimeoutError, PingError):
+            except (TimeoutError, PingError) as e:
                 self._logger.warning("Pinging server %r failed, removing", server)
+                self._logger.debug("Exception information for %r" % e, exc_info=sys.exc_info())
                 return server, False
 
             # apply the description sent by the server
