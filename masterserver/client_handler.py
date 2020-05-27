@@ -63,7 +63,16 @@ class ClientHandler:
 
             self._logger.info("Received registration request for server %s:%d", host, int(port))
 
+            # try to register server
+            # if the registration fails, we'll receive None as return value
             re_server = await self._master_server.register_server(host, serverip, int(port), branch)
+
+            if re_server is not None:
+                reply = "Successfully pinged (%s:%d), server is now listed" % (re_server.ip_addr, re_server.port)
+            else:
+                reply = "Error: Pinging failed, server will not be listed"
+
+            self._writer.write('echo "{}"\n'.format(reply).encode("cube2"))
 
             command = (await self._reader.readline()).decode().rstrip("\n")
 
