@@ -13,7 +13,7 @@ from aiohttp import web
 try:
     import sentry_sdk
 except ImportError:
-    pass
+    print("Sentry SDK not found, Sentry integration not available")
 else:
     try:
         sentry_sdk.init(os.environ["SENTRY_DSN"])
