@@ -12,4 +12,4 @@ COPY masterserver/ /masterserver/masterserver/
 COPY setup.py /masterserver/
 COPY README.md /masterserver/
 
-RUN python setup.py develop
+RUN pip install -e .[sentry]
