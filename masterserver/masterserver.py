@@ -296,8 +296,8 @@ class MasterServer:
                 except TimeoutError:
                     self._logger.warning("ping timeout for server %r, server will not be listed", server)
                     return
-                except PingError:
-                    self._logger.warning("ping failed for server %r, server will not be listed", server)
+                except PingError as e:
+                    self._logger.warning("ping failed for server %r, server will not be listed: %s", server, e)
                     return
 
                 # apply the description sent by the server
