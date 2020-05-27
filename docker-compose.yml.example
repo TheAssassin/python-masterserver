@@ -8,6 +8,7 @@ services:
       - 28800:28800
     environment:
       - PROXIED_SERVERS=play.redeclipse.net
+      #- SENTRY_DSN=my-sentry-dsn
     volumes:
       - masterserver_data:/data
 
