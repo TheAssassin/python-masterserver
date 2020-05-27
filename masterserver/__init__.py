@@ -7,6 +7,6 @@ register_codec()
 
 
 # now the regular imports may follow
-from .masterserver import MasterServer  # noqa: F401
+from .masterserver import MasterServer  # noqa: F401 E402
 
 __all__ = (MasterServer,)
