@@ -11,7 +11,6 @@ setup(
     long_description=open(os.path.join(os.path.dirname(__file__), "README.md")).read(),
     install_requires=[
         "aiohttp",
-        "ZODB",
     ],
     extras_require={
         "coloredlogs": [
