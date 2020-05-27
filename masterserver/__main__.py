@@ -9,6 +9,20 @@ from masterserver import MasterServer, setup_logging
 from aiohttp import web
 
 
+# try to set up Sentry if the SDK is installed and a sentry DSN is available from the environment
+try:
+    import sentry_sdk
+except ImportError:
+    pass
+else:
+    try:
+        sentry_sdk.init(os.environ["SENTRY_DSN"])
+    except KeyError:
+        pass
+    else:
+        print("Set up Sentry integration successfully")
+
+
 if "DEBUG" in os.environ:
     loglevel = logging.DEBUG
 else:

@@ -20,6 +20,9 @@ setup(
         "tests": [
             "tox",
         ],
+        "sentry": [
+            "sentry_sdk",
+        ]
     },
     entry_points={
         "console_scripts": [
