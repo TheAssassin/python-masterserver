@@ -82,7 +82,11 @@ class ClientHandler:
 
             first_command = (await self._reader.readline()).decode().rstrip("\n")
 
-            if first_command == "update":
+            # nagios-like monitoring for instance just probe whether the port is available, and send no message
+            if first_command.strip(" \r\n") == "":
+                self._logger.warning("no command received from client, closing connection")
+
+            elif first_command == "update":
                 await self._handle_update_command()
 
             # server try to keep up their TCP connection
