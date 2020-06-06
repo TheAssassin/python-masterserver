@@ -10,6 +10,17 @@ if TYPE_CHECKING:
     from masterserver.red_eclipse_server import RedEclipseServer
 
 
+class UnknownCommandError(Exception):
+    def __init__(self, command: str):
+        self.command = command
+
+    def __str__(self):
+        return "Invalid command {}".format(self.command)
+
+    def __repr__(self):
+        return "<UnknownCommandError({})>".format(str(self))
+
+
 class ClientHandler:
     _logger = get_logger("master-server-client")
 
@@ -53,28 +64,31 @@ class ClientHandler:
 
                 return
 
-            match = re.match(r'server ([0-9]+) ([^\s]+) ([0-9]+) "([^"]*)" ([0-9]+) "([^"]*)"', command)
+            elif command.startswith("server "):
+                match = re.match(r'server ([0-9]+) ([^\s]+) ([0-9]+) "([^"]*)" ([0-9]+) "([^"]*)"', command)
 
-            if not match:
-                raise ValueError("Invalid server command", command)
+                if not match:
+                    raise UnknownCommandError(command)
 
-            host, _ = self._writer.get_extra_info("peername")
-            port, serverip, version, _, _, branch = match.groups()
+                host, _ = self._writer.get_extra_info("peername")
+                port, serverip, version, _, _, branch = match.groups()
 
-            self._logger.info("Received registration request for server %s:%d", host, int(port))
+                self._logger.info("Received registration request for server %s:%d", host, int(port))
 
-            # try to register server
-            # if the registration fails, we'll receive None as return value
-            re_server = await self._master_server.register_server(host, serverip, int(port), branch)
+                # try to register server
+                # if the registration fails, we'll receive None as return value
+                re_server = await self._master_server.register_server(host, serverip, int(port), branch)
 
-            if re_server is not None:
-                reply = "Successfully pinged (%s:%d), server is now listed" % (re_server.ip_addr, re_server.port)
-            else:
-                reply = "Error: Pinging failed, server will not be listed"
+                if re_server is not None:
+                    reply = "Successfully pinged (%s:%d), server is now listed" % (re_server.ip_addr, re_server.port)
+                else:
+                    reply = "Error: Pinging failed, server will not be listed"
 
-            self._writer.write('echo "{}"\n'.format(reply).encode("cube2"))
+                self._writer.write('echo "{}"\n'.format(reply).encode("cube2"))
 
-            command = (await self._reader.readline()).decode().rstrip("\n")
+                command = (await self._reader.readline()).decode().rstrip("\n")
+
+            raise UnknownCommandError(command)
 
     async def handle(self):
         try:
@@ -96,12 +110,12 @@ class ClientHandler:
             elif first_command.startswith("server "):
                 await self._handle_server(first_command)
 
-            else:
-                self._logger.warning(
-                    "unknown command %r from client %r, closing connection",
-                    first_command,
-                    self._client_data
-                )
+        except UnknownCommandError as e:
+            self._logger.warning(
+                "unknown command \"%s\" from client %r, closing connection",
+                e.command,
+                self._client_data
+            )
 
         finally:
             self._writer.close()
