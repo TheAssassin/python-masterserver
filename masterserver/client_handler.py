@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from masterserver.red_eclipse_server import RedEclipseServer
 
 
-class UnknownCommandError(Exception):
+class CommandError(Exception):
     def __init__(self, command: str):
         self.command = command
 
@@ -18,7 +18,15 @@ class UnknownCommandError(Exception):
         return "Invalid command {}".format(self.command)
 
     def __repr__(self):
-        return "<UnknownCommandError({})>".format(str(self))
+        return "<{}({})>".format(self.__class__.__name__, str(self))
+
+
+class UnknownCommandError(CommandError):
+    pass
+
+
+class InvalidCommandError(CommandError):
+    pass
 
 
 class ClientHandler:
@@ -68,7 +76,7 @@ class ClientHandler:
                 match = re.match(r'server ([0-9]+) ([^\s]+) ([0-9]+) "([^"]*)" ([0-9]+) "([^"]*)"', command)
 
                 if not match:
-                    raise UnknownCommandError(command)
+                    raise InvalidCommandError(command)
 
                 host, _ = self._writer.get_extra_info("peername")
                 port, serverip, version, _, _, branch = match.groups()
@@ -110,9 +118,9 @@ class ClientHandler:
             elif first_command.startswith("server "):
                 await self._handle_server(first_command)
 
-        except UnknownCommandError as e:
+        except CommandError as e:
             self._logger.warning(
-                "unknown command \"%s\" from client %r, closing connection",
+                "unknown or invalid command \"%s\" from client %r, closing connection",
                 e.command,
                 self._client_data
             )
