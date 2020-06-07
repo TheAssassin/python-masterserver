@@ -3,10 +3,10 @@ class CommandError(Exception):
         self.command = command
 
     def __str__(self):
-        return "Invalid command {}".format(self.command)
+        return repr(self)
 
     def __repr__(self):
-        return "<{}({})>".format(self.__class__.__name__, str(self))
+        return "<{}({})>".format(self.__class__.__name__, self.command)
 
 
 class UnknownCommandError(CommandError):
