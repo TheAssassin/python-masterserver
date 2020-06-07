@@ -3,15 +3,17 @@ class CommandError(Exception):
         self.command = command
 
     def __str__(self):
-        return repr(self)
+        raise NotImplementedError()
 
     def __repr__(self):
         return "<{}({})>".format(self.__class__.__name__, self.command)
 
 
 class UnknownCommandError(CommandError):
-    pass
+    def __str__(self):
+        return "Unknown command: %s" % self.command
 
 
 class InvalidCommandError(CommandError):
-    pass
+    def __str__(self):
+        return "Invalid command: %s" % self.command

@@ -154,11 +154,8 @@ class ClientHandler(ClientHandlerBase):
                 raise UnknownCommandError(first_command)
 
         except CommandError as e:
-            self._logger.warning(
-                "unknown or invalid command \"%s\" from client %r, closing connection",
-                e.command,
-                self._client_data
-            )
+            self._writer.write('error ""')
+            self._logger.warning("\"%s\" error from client %r, closing connection", str(e), self._client_data)
 
         finally:
             self._writer.close()
