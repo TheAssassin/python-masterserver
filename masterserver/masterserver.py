@@ -54,7 +54,7 @@ class MasterServer:
     async def _handle_connection(self, reader: StreamReader, writer: StreamWriter):
         self._logger.debug("client connteced")
         msc = ClientHandler(self, reader, writer)
-        await msc.handle()
+        await msc.handle_generic_connection()
 
     async def _poll_proxied_servers(self):
         self._logger.info("proxied servers polling task started")

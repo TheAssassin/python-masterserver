@@ -26,25 +26,16 @@ class ClientHandlerBase:
         raise NotImplementedError()
 
 
-class ClientHandler(ClientHandlerBase):
-    async def _handle_update_command(self):
-        lines = [
-            "setversion 160 230",
-            "clearservers",
-        ]
+class ServerClientHandler(ClientHandlerBase):
+    """
+    "Subhandler" for server connections. It doesn't handle generic connections, but provides a special handler method
+    for server connections.
+    """
 
-        server: RedEclipseServer
-        for server in self._master_server.servers:
-            lines.append("addserver %s" % server.addserver_line())
+    async def handle_server(self, first_command: str = None):
+        # note for self: the connection is closed properly once this method returns (or raises an exception), no need
+        # to close it here
 
-        response = "\n".join(lines)
-        response += "\n"
-
-        self._writer.write(response.encode("cube2"))
-
-        self._logger.info("closing connection from client %r", self._client_data)
-
-    async def _handle_server(self, first_command: str):
         re_server = None
 
         command = first_command
@@ -76,7 +67,10 @@ class ClientHandler(ClientHandlerBase):
                 re_server = await self._master_server.register_server(host, serverip, int(port), branch)
 
                 if re_server is not None:
-                    reply = "Successfully pinged (%s:%d), server is now listed" % (re_server.ip_addr, re_server.port)
+                    reply = "Successfully pinged (%s:%d), server is now listed" % (
+                        re_server.ip_addr, re_server.port
+                    )
+
                 else:
                     reply = "Error: Pinging failed, server will not be listed"
 
@@ -85,6 +79,25 @@ class ClientHandler(ClientHandlerBase):
                 command = (await self._reader.readline()).decode().rstrip("\n")
 
             raise UnknownCommandError(command)
+
+
+class ClientHandler(ClientHandlerBase):
+    async def _handle_update_command(self):
+        lines = [
+            "setversion 160 230",
+            "clearservers",
+        ]
+
+        server: RedEclipseServer
+        for server in self._master_server.servers:
+            lines.append("addserver %s" % server.addserver_line())
+
+        response = "\n".join(lines)
+        response += "\n"
+
+        self._writer.write(response.encode("cube2"))
+
+        self._logger.info("closing connection from client %r", self._client_data)
 
     async def handle_generic_connection(self):
         try:
@@ -104,7 +117,8 @@ class ClientHandler(ClientHandlerBase):
             # limiting the amount of servers in the server list rather than closing new connections
             # in any case we can run the specific handler from here, the try-finally will clean up the connection
             elif first_command.startswith("server "):
-                await self._handle_server(first_command)
+                server_handler = ServerClientHandler(self._master_server, self._reader, self._writer)
+                await server_handler.handle_server(first_command)
 
         except CommandError as e:
             self._logger.warning(
