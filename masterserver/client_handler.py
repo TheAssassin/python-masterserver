@@ -76,6 +76,34 @@ class ServerClientHandler(ClientHandlerBase):
 
                 self._writer.write('echo "{}"\n'.format(reply).encode("cube2"))
 
+            elif command.startswith("reqauth "):
+                match = re.match(r'reqauth ([0-9]+) ([^\s]+) ([^\s]+)', command)
+
+                if not match:
+                    raise InvalidCommandError(command)
+
+                # request_index is used by the client to match the reply to the request
+                # user_name is what we use to look up the pubkey in our user database
+                # user_ip is not needed by us, and is discarded (TODO: don't forward user IPs to master server)
+                request_id, user_name, user_ip = match.groups()
+
+                try:
+                    request_id = int(request_id)
+                except ValueError:
+                    raise InvalidCommandError(command)
+
+                # we don't support authentication yet
+                # a protocol conform behavior is to just send auth failures for all requests
+                self._writer.write('failauth {}\n'.format(request_id).encode("cube2"))
+
+                self._logger.info("auth request no. %d failed for user %s on server %s",
+                    request_id,
+                    user_name,
+                    re_server.ip_addr
+                )
+
+                self._writer.write('error "authentication is not supported (yet)"\n'.encode("cube2"))
+
             else:
                 raise UnknownCommandError(command)
 
@@ -117,10 +145,13 @@ class ClientHandler(ClientHandlerBase):
             # server try to keep up their TCP connection
             # the reason upstream is probably rate limiting, but here it's planned to implement rate limiting by
             # limiting the amount of servers in the server list rather than closing new connections
-            # in any case we can run the specific handler from here, the try-finally will clean up the connection
-            elif first_command.startswith("server "):
+            # in any case, we can run the specific handler from here, the try-finally will clean up the connection
+            elif first_command.split(" ")[0] in ("server", "reqauth", "confauth"):
                 server_handler = ServerClientHandler(self._master_server, self._reader, self._writer)
                 await server_handler.handle_server(first_command)
+
+            else:
+                raise UnknownCommandError(first_command)
 
         except CommandError as e:
             self._logger.warning(
