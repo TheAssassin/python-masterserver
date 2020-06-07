@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from masterserver.red_eclipse_server import RedEclipseServer
 
 
-class ClientHandler:
+class ClientHandlerBase:
     _logger = get_logger("master-server-client")
 
     def __init__(self, master_server: "MasterServer", reader: StreamReader, writer: StreamWriter):
@@ -22,6 +22,11 @@ class ClientHandler:
 
         self._client_data = self._writer.get_extra_info("peername")
 
+    async def handle_generic_connection(self):
+        raise NotImplementedError()
+
+
+class ClientHandler(ClientHandlerBase):
     async def _handle_update_command(self):
         lines = [
             "setversion 160 230",
@@ -81,7 +86,7 @@ class ClientHandler:
 
             raise UnknownCommandError(command)
 
-    async def handle(self):
+    async def handle_generic_connection(self):
         try:
             self._logger.info("client connected: %r", self._client_data)
 
