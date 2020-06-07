@@ -76,9 +76,11 @@ class ServerClientHandler(ClientHandlerBase):
 
                 self._writer.write('echo "{}"\n'.format(reply).encode("cube2"))
 
-                command = (await self._reader.readline()).decode().rstrip("\n")
+            else:
+                raise UnknownCommandError(command)
 
-            raise UnknownCommandError(command)
+            # read next command
+            command = (await self._reader.readline()).decode().rstrip("\n")
 
 
 class ClientHandler(ClientHandlerBase):
