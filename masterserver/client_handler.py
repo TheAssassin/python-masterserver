@@ -154,7 +154,7 @@ class ClientHandler(ClientHandlerBase):
                 raise UnknownCommandError(first_command)
 
         except CommandError as e:
-            self._writer.write('error ""')
+            self._writer.write('error "{}"\n'.format(str(e)).encode("cube2"))
             self._logger.warning("\"%s\" error from client %r, closing connection", str(e), self._client_data)
 
         finally:
