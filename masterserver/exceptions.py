@@ -1,5 +1,6 @@
 class CommandError(Exception):
     def __init__(self, command: str):
+        super().__init__()
         self.command = command
 
     def __str__(self):
