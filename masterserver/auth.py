@@ -1,3 +1,4 @@
+import json
 from collections import namedtuple
 from typing import Dict
 
@@ -10,12 +11,27 @@ AuthDBEntry = namedtuple("AuthDBEntry", ["pubkey", "flags"])
 
 
 class AuthStorage:
-    # users to auth pubkeys map
-    _users: Dict[str, AuthDBEntry] = {}
+    @classmethod
+    def get_user(cls, user_name: str):
+        try:
+            with open("auth.json", "r") as f:
+                data = json.load(f)
+
+            user_data = data[user_name]
+
+            try:
+                user = AuthDBEntry(user_data["pubkey"], user_data["flags"])
+            except KeyError:
+                raise ValueError("invalid user format")
+
+            return user
+
+        except IOError:
+            raise KeyError("auth db not found")
 
     @classmethod
     def generate_auth_challenge(cls, user_name: str) -> AuthRequest:
-        pubkey = cls._users[user_name].pubkey
+        pubkey = cls.get_user(user_name).pubkey
         challenge, expected_answer = bn_crypto.generate_auth_challenge(pubkey)
         return AuthRequest(user_name, challenge, expected_answer)
 
@@ -31,4 +47,4 @@ class AuthStorage:
 
     @classmethod
     def get_user_flags(cls, user_name: str):
-        return "".join(cls._users[user_name].flags)
+        return "".join(cls.get_user(user_name).flags)

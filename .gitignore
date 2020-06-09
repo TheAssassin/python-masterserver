@@ -9,3 +9,4 @@ __cache__/
 .tox/
 __pycache__/
 *.egg-info/
+*.json
