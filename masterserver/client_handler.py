@@ -60,7 +60,7 @@ class ServerClientHandler(ClientHandlerBase):
                 return
 
             elif command.startswith("server "):
-                match = re.match(r'server ([0-9]+) ([^\s]+) ([0-9]+) "([^"]*)" ([0-9]+) "([^"]*)"', command)
+                match = re.match(r'server ([0-9a-fA-F+-]+) ([^\s]+) ([0-9a-fA-F+-]+) "([^"]*)" ([0-9a-fA-F+-]+) "([^"]*)"', command)
 
                 if not match:
                     raise InvalidCommandError(command)
@@ -85,7 +85,7 @@ class ServerClientHandler(ClientHandlerBase):
                 self._writer.write('echo "{}"\n'.format(reply).encode("cube2"))
 
             elif command.startswith("reqauth "):
-                match = re.match(r'reqauth ([0-9]+) ([^\s]+) ([^\s]+)', command)
+                match = re.match(r'reqauth ([0-9a-fA-F+-]+) ([^\s]+) ([^\s]+)', command)
 
                 if not match:
                     raise InvalidCommandError(command)
