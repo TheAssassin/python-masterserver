@@ -24,7 +24,11 @@ class AuthStorage:
     @staticmethod
     def validate_auth_reply(reply: str, auth_request: AuthRequest):
         reply_num = int(reply, 16)
-        expected_answer_num = int(auth_request.expected_answer, 16)
+
+        # for some reason, the challenge answers are unsigned
+        # until the reason has been figured out, we do an unsigned comparison
+        expected_answer_num = abs(int(auth_request.expected_answer, 16))
+
         return reply_num == expected_answer_num
 
     @classmethod
