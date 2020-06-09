@@ -11,9 +11,7 @@ AuthDBEntry = namedtuple("AuthDBEntry", ["pubkey", "flags"])
 
 class AuthStorage:
     # users to auth pubkeys map
-    _users: Dict[str, AuthDBEntry] = {
-        "test": AuthDBEntry("+8f53aafea16812d44a22677f23239b7051d9205128a55892", ["d"]),
-    }
+    _users: Dict[str, AuthDBEntry] = {}
 
     @classmethod
     def generate_auth_challenge(cls, user_name: str) -> AuthRequest:
