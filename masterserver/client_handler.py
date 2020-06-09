@@ -3,8 +3,9 @@ from asyncio import StreamReader, StreamWriter
 
 from . import get_logger
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 
+from .auth import AuthStorage, AuthRequest
 from .exceptions import CommandError, InvalidCommandError, UnknownCommandError
 
 if TYPE_CHECKING:
@@ -31,6 +32,13 @@ class ServerClientHandler(ClientHandlerBase):
     "Subhandler" for server connections. It doesn't handle generic connections, but provides a special handler method
     for server connections.
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # the instance is kept alive while the server is connected to the master
+        # once the connection is interrupted, all old requests become invalid automatically
+        self._auth_requests: Dict[int, AuthRequest] = {}
 
     async def handle_server(self, first_command: str = None):
         # note for self: the connection is closed properly once this method returns (or raises an exception), no need
