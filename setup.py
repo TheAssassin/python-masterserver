@@ -11,7 +11,7 @@ setup(
     long_description=open(os.path.join(os.path.dirname(__file__), "README.md")).read(),
     install_requires=[
         "aiohttp",
-        "git+https://github.com/TheAssassin/bluenebula-auth.git#egg=bn_crypto",
+        "bn_crypto @ git+https://github.com/TheAssassin/bluenebula-auth.git#egg=bn_crypto",
     ],
     extras_require={
         "coloredlogs": [
