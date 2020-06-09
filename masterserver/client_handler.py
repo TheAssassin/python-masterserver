@@ -100,17 +100,70 @@ class ServerClientHandler(ClientHandlerBase):
                 except ValueError:
                     raise InvalidCommandError(command)
 
-                # we don't support authentication yet
-                # a protocol conform behavior is to just send auth failures for all requests
-                self._writer.write('failauth {}\n'.format(request_id).encode("cube2"))
+                try:
+                    auth_request = AuthStorage.generate_auth_challenge(user_name)
 
-                self._logger.info("auth request no. %d failed for user %s on server %s",
-                    request_id,
-                    user_name,
-                    re_server.ip_addr
-                )
+                except KeyError:
+                    # we don't support authentication yet
+                    # a protocol conform behavior is to just send auth failures for all requests
+                    self._writer.write('failauth {}\n'.format(request_id).encode("cube2"))
 
-                self._writer.write('error "authentication is not supported (yet)"\n'.encode("cube2"))
+                    self._logger.info("auth request no. %d failed for user %s on server %s: unknown user",
+                        request_id,
+                        user_name,
+                        re_server.ip_addr
+                    )
+
+                else:
+                    self._auth_requests[request_id] = auth_request
+                    self._writer.write('chalauth {} {}\n'.format(request_id, auth_request.challenge).encode("cube2"))
+                    self._logger.debug("Generated auth challenge for user {}, request ID {}: {}".format(
+                        user_name, request_id, auth_request.challenge
+                    ))
+
+            elif command.startswith("confauth "):
+                match = re.match(r'confauth ([0-9a-fA-F+-]+) ([^\s]+)', command)
+
+                if not match:
+                    raise InvalidCommandError(command)
+
+                # request_index is used by the client to match the reply to the request
+                # user_name is what we use to look up the pubkey in our user database
+                # user_ip is not needed by us, and is discarded (TODO: don't forward user IPs to master server)
+                request_id, reply = match.groups()
+
+                try:
+                    request_id = int(request_id)
+                except ValueError:
+                    raise InvalidCommandError(command)
+
+                self._logger.debug("received {}".format(command))
+
+                def fail_auth():
+                    self._writer.write("failauth {}\n".format(request_id).encode("cube2"))
+                    del self._auth_requests[request_id]
+
+                try:
+                    auth_request = self._auth_requests[request_id]
+
+                except KeyError:
+                    self._logger.error("received confauth for unknown request ID {}".format(request_id))
+                    fail_auth()
+
+                else:
+                    if AuthStorage.validate_auth_reply(reply, auth_request):
+                        flags = AuthStorage.get_user_flags(auth_request.user_name)
+
+                        message = "succauth {} \"{}\" \"{}\"\n".format(request_id, auth_request.user_name, flags)
+                        self._writer.write(message.encode("cube2"))
+
+                        self._logger.info("auth succeeded {} [{}] ({}) on server {}".format(
+                            auth_request.user_name, flags, request_id, self._client_data
+                        ))
+
+                    else:
+                        self._logger.info("auth failed [{}] on server {}".format(request_id, self._client_data))
+                        fail_auth()
 
             else:
                 raise UnknownCommandError(command)
