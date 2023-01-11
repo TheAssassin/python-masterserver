@@ -10,3 +10,7 @@ __cache__/
 __pycache__/
 *.egg-info/
 *.json
+*backup*.txt
+*.*swp*
+build/
+dist/
