@@ -60,8 +60,11 @@ for server in os.environ.get("PROXIED_SERVERS", "").split(","):
 
 
 if __name__ == "__main__":
+    # make sure to run everything on the same event loop
+    loop = asyncio.get_event_loop()
+
     # first we start the masterserver
-    asyncio.get_event_loop().run_until_complete(ms.start_server())
+    loop.run_until_complete(ms.start_server())
 
     # then we run the web app, which will internally run the asyncio event loop and therefore also run the masterserver
-    web.run_app(app, port=28799)
+    web.run_app(app, port=28799, loop=loop)
