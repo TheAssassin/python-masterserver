@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "masterserver"
+# alibi version, the true version is defined by poetry-dynamic-versioning
+# run poetry self add "poetry-dynamic-versioning[plugin]" to install the plugin
+version = "0.0.1"
+description = "Blue Nebula masterserver written in Python. Compatible to Red Eclipse 1.x."
+authors = ["TheAssassin <theassassin@assassinate-you.net>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+aiohttp = {extras = ["speedups"], version = "^3.8"}
+bn_crypto = {git = "https://github.com/TheAssassin/bluenebula-auth.git", branch = "master"}
+
+[tool.poetry-dynamic-versioning]
+enable = true
+
+[build-system]
+requires = ["poetry-core", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
