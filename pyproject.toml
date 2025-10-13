@@ -10,7 +10,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-aiohttp = {extras = ["speedups"], version = "^3.12"}
+aiohttp = {extras = ["speedups"], version = "^3.13"}
 bn_crypto = {git = "https://github.com/TheAssassin/bluenebula-auth.git", branch = "master"}
 
 [tool.poetry-dynamic-versioning]
