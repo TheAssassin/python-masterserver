@@ -61,7 +61,12 @@ for server in os.environ.get("PROXIED_SERVERS", "").split(","):
 
 if __name__ == "__main__":
     # make sure to run everything on the same event loop
-    loop = asyncio.get_event_loop()
+    # backwards compatible with Python < 3.14
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
     # first we start the masterserver
     loop.run_until_complete(ms.start_server())
